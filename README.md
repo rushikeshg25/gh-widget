@@ -1,4 +1,4 @@
-# GitHub Readme Widgets
+# GitHub Readme Widget
 
 A high-performance, customizable, and secure Next.js widget to display your GitHub stats, streaks, and top languages dynamically on your profile.
 
