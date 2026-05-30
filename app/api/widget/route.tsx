@@ -9,6 +9,14 @@ if (!ALLOWED_USER) {
     console.warn("⚠️ GITHUB_USERNAME is not set in environment variables.");
 }
 
+// Minimal hand-written fallback so embedded <img> tags degrade gracefully
+function errorSvg(message: string): string {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="520" height="220" viewBox="0 0 520 220">
+  <rect width="520" height="220" rx="12" fill="#0d1117" stroke="#30363d"/>
+  <text x="260" y="115" fill="#8b949e" font-family="sans-serif" font-size="14" text-anchor="middle">⚠️ ${message}</text>
+</svg>`;
+}
+
 export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const username = searchParams.get("user");
@@ -74,16 +82,16 @@ export async function GET(req: NextRequest) {
                             <span style={{ fontSize: "11px", color: secondaryText }}>Stars</span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", width: "45%" }}>
-                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.total_commits}</span>
-                            <span style={{ fontSize: "11px", color: secondaryText }}>Commits (2025)</span>
+                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.commits_year}</span>
+                            <span style={{ fontSize: "11px", color: secondaryText }}>Commits ({stats.year})</span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", width: "45%" }}>
-                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.current_streak}</span>
-                            <span style={{ fontSize: "11px", color: secondaryText }}>Current Streak</span>
+                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.contributions_year}</span>
+                            <span style={{ fontSize: "11px", color: secondaryText }}>Contributions ({stats.year})</span>
                         </div>
                         <div style={{ display: "flex", flexDirection: "column", width: "45%" }}>
-                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.max_streak}</span>
-                            <span style={{ fontSize: "11px", color: secondaryText }}>Max Streak</span>
+                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.repos_contributed}</span>
+                            <span style={{ fontSize: "11px", color: secondaryText }}>Repos Contributed To</span>
                         </div>
                     </div>
                 </div>
@@ -135,6 +143,9 @@ export async function GET(req: NextRequest) {
         });
     } catch (error) {
         console.error("Widget Error:", error);
-        return new NextResponse("Internal Server Error", { status: 500 });
+        return new NextResponse(errorSvg("Failed to load GitHub stats"), {
+            status: 500,
+            headers: { "Content-Type": "image/svg+xml" },
+        });
     }
 }

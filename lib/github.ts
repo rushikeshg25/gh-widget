@@ -16,12 +16,13 @@ export interface GitHubStats {
   following: number;
   public_repos: number;
   total_stars: number;
-  total_commits: number;
   total_gists: number;
   avatar_url: string;
   top_languages: { name: string; count: number; color: string; percentage: number }[];
-  current_streak: number;
-  max_streak: number;
+  commits_year: number;
+  contributions_year: number;
+  repos_contributed: number;
+  year: number;
 }
 
 // Map of common language colors
@@ -46,48 +47,6 @@ const LANGUAGE_COLORS: Record<string, string> = {
   PHP: "#4F5D95",
 };
 
-// Helper to calculate streaks
-function calculateStreaks(weeks: { contributionDays: { date: string; contributionCount: number }[] }[]) {
-  const days = weeks.flatMap((week) => week.contributionDays);
-  
-  let currentStreak = 0;
-  let maxStreak = 0;
-  let tempStreak = 0;
-  let totalCommitsYear = 0;
-
-  // We loop through all days to find max streak and total commits
-  for (const day of days) {
-    if (day.contributionCount > 0) {
-        tempStreak++;
-        totalCommitsYear += day.contributionCount;
-    } else {
-        maxStreak = Math.max(maxStreak, tempStreak);
-        tempStreak = 0;
-    }
-  }
-  // Check max streak one last time
-  maxStreak = Math.max(maxStreak, tempStreak);
-
-  // Calculate current streak
-  let activeStreak = 0;
-  const reversedDays = [...days].reverse();
-  
-  for (let i = 0; i < reversedDays.length; i++) {
-      if (reversedDays[i].contributionCount > 0) {
-          activeStreak++;
-      } else {
-          if (i === 0) {
-              // Today is 0. Streak is valid if yesterday was > 0.
-              continue;
-          } else {
-              break;
-          }
-      }
-  }
-
-  return { currentStreak: activeStreak, maxStreak, totalCommitsYear };
-}
-
 async function fetchGitHubStats(username: string): Promise<GitHubStats> {
   // 1. Get User Profile via REST
   const { data: user } = await octokit.rest.users.getByUsername({
@@ -101,57 +60,75 @@ async function fetchGitHubStats(username: string): Promise<GitHubStats> {
     type: "owner",
   });
 
-  const total_stars = repos.reduce((acc, repo) => acc + (repo.stargazers_count || 0), 0);
+  // Exclude forks so stats reflect the user's own work
+  const ownRepos = repos.filter((repo) => !repo.fork);
 
-  // Calculate Languages
-  const languagesMap: Record<string, number> = {};
-  let totalLanguageCount = 0;
-  repos.forEach((repo) => {
-    if (repo.language) {
-      languagesMap[repo.language] = (languagesMap[repo.language] || 0) + 1;
-      totalLanguageCount++;
+  const total_stars = ownRepos.reduce((acc, repo) => acc + (repo.stargazers_count || 0), 0);
+
+  // Calculate Languages by bytes of code (GitHub-style), not repo count
+  const languageBytes: Record<string, number> = {};
+  const languageResults = await Promise.all(
+    ownRepos.map(async (repo) => {
+      try {
+        const { data } = await octokit.rest.repos.listLanguages({ owner: username, repo: repo.name });
+        return data as Record<string, number>;
+      } catch {
+        return {} as Record<string, number>;
+      }
+    })
+  );
+
+  let totalBytes = 0;
+  for (const langs of languageResults) {
+    for (const [name, bytes] of Object.entries(langs)) {
+      languageBytes[name] = (languageBytes[name] || 0) + bytes;
+      totalBytes += bytes;
     }
-  });
+  }
 
-  const top_languages = Object.entries(languagesMap)
+  const top_languages = Object.entries(languageBytes)
     .sort(([, a], [, b]) => b - a)
     .slice(0, 5)
     .map(([name, count]) => ({
       name,
       count,
       color: LANGUAGE_COLORS[name] || "#ccc",
-      percentage: totalLanguageCount > 0 ? (count / totalLanguageCount) * 100 : 0,
+      percentage: totalBytes > 0 ? (count / totalBytes) * 100 : 0,
     }));
 
 
-  // 3. GraphQL for Contribution Graph
-  let streakStats = { currentStreak: 0, maxStreak: 0, totalCommitsYear: 0 };
-  
+  // 3. GraphQL for current calendar year contributions
+  const year = new Date().getFullYear();
+  const from = new Date(Date.UTC(year, 0, 1)).toISOString();
+  const to = new Date().toISOString();
+
+  let yearStats = { commits_year: 0, contributions_year: 0, repos_contributed: 0 };
+
   try {
-     // Removed @ts-expect-error as it might be unused if types are correct
      const graphqlData = await octokit.graphql(`
-       query($username: String!) {
+       query($username: String!, $from: DateTime!, $to: DateTime!) {
          user(login: $username) {
-           contributionsCollection {
+           contributionsCollection(from: $from, to: $to) {
+             totalCommitContributions
+             totalRepositoriesWithContributedCommits
              contributionCalendar {
-               weeks {
-                 contributionDays {
-                   date
-                   contributionCount
-                 }
-               }
+               totalContributions
              }
            }
          }
        }
-     `, { username });
-     
+     `, { username, from, to });
+
      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-     const weeks = (graphqlData as any).user.contributionsCollection.contributionCalendar.weeks;
-     streakStats = calculateStreaks(weeks);
-     
+     const contributions = (graphqlData as any).user.contributionsCollection;
+     yearStats = {
+       commits_year: contributions.totalCommitContributions,
+       contributions_year: contributions.contributionCalendar.totalContributions,
+       repos_contributed: contributions.totalRepositoriesWithContributedCommits,
+     };
+
   } catch (e) {
-      console.warn("GraphQL Streak/Commits Fetch failed", e);
+      console.warn("GraphQL Contributions Fetch failed", e);
   }
 
   return {
@@ -161,12 +138,13 @@ async function fetchGitHubStats(username: string): Promise<GitHubStats> {
     following: user.following,
     public_repos: user.public_repos,
     total_stars,
-    total_commits: streakStats.totalCommitsYear,
     total_gists: user.public_gists,
     avatar_url: user.avatar_url,
     top_languages,
-    current_streak: streakStats.currentStreak,
-    max_streak: streakStats.maxStreak,
+    commits_year: yearStats.commits_year,
+    contributions_year: yearStats.contributions_year,
+    repos_contributed: yearStats.repos_contributed,
+    year,
   };
 }
 
