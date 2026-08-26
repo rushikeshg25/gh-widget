@@ -70,29 +70,18 @@ export async function GET(req: NextRequest) {
                 }}
             >
                 {/* Left Column: Key Stats */}
-                <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "space-between", height: "100%" }}>
+                <div style={{ display: "flex", flexDirection: "column", width: "150px", justifyContent: "space-between", height: "100%" }}>
                     <div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
                         <span style={{ fontSize: "16px", fontWeight: 700, color: textColor }}>{stats.name || username}</span>
                         <span style={{ fontSize: "12px", color: secondaryText }}>@{stats.username}</span>
                     </div>
-
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "20px" }}>
-                        <div style={{ display: "flex", flexDirection: "column", width: "45%" }}>
-                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.total_stars}</span>
-                            <span style={{ fontSize: "11px", color: secondaryText }}>Stars</span>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", width: "45%" }}>
-                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.commits_year}</span>
-                            <span style={{ fontSize: "11px", color: secondaryText }}>Commits ({stats.year})</span>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", width: "45%" }}>
-                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.contributions_year}</span>
-                            <span style={{ fontSize: "11px", color: secondaryText }}>Contributions ({stats.year})</span>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", width: "45%" }}>
-                            <span style={{ fontSize: "18px", fontWeight: 700, color: textColor }}>{stats.repos_contributed}</span>
-                            <span style={{ fontSize: "11px", color: secondaryText }}>Repos Contributed To</span>
-                        </div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontSize: "22px", fontWeight: 700, color: textColor }}>{stats.total_stars}</span>
+                        <span style={{ fontSize: "11px", color: secondaryText }}>Stars</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column" }}>
+                        <span style={{ fontSize: "22px", fontWeight: 700, color: textColor }}>{stats.contributions_year}</span>
+                        <span style={{ fontSize: "11px", color: secondaryText }}>Contributions this year</span>
                     </div>
                 </div>
 
@@ -102,7 +91,7 @@ export async function GET(req: NextRequest) {
                 {/* Right Column: Top Languages */}
                 <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", gap: "6px", height: "100%" }}>
                     <div style={{ display: "flex", fontSize: "11px", fontWeight: 600, color: secondaryText, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>Top Languages</div>
-                    {stats.top_languages.slice(0, 5).map((lang) => (
+                    {stats.top_languages.slice(0, 3).map((lang) => (
                         <div key={lang.name} style={{ display: "flex", flexDirection: "column", width: "100%", gap: "4px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: textColor }}>
                                 <span style={{ fontWeight: 500 }}>{lang.name}</span>
