@@ -91,7 +91,7 @@ export async function GET(req: NextRequest) {
                 {/* Right Column: Top Languages */}
                 <div style={{ display: "flex", flexDirection: "column", flex: 1, justifyContent: "center", gap: "6px", height: "100%" }}>
                     <div style={{ display: "flex", fontSize: "11px", fontWeight: 600, color: secondaryText, textTransform: "uppercase", letterSpacing: "1px", marginBottom: "12px" }}>Top Languages</div>
-                    {stats.top_languages.slice(0, 3).map((lang) => (
+                    {stats.top_languages.slice(0, 5).map((lang) => (
                         <div key={lang.name} style={{ display: "flex", flexDirection: "column", width: "100%", gap: "4px" }}>
                             <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: textColor }}>
                                 <span style={{ fontWeight: 500 }}>{lang.name}</span>
